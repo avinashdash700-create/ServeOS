@@ -1,0 +1,479 @@
+{
+  "name": "ServeOS — Gmail Send Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "fromEmail": "sender@example.com",
+        "toEmail": "recipient@example.com",
+        "subject": "={{$json.subject}}",
+        "emailFormat": "text",
+        "text": "={{$json.body}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -832,
+        -560
+      ],
+      "id": "63ddb70e-2cec-43da-8966-2e7011f8b25a",
+      "name": "Send Email",
+      "webhookId": "655442b2-088f-41d9-877c-60f5dbf72acc",
+      "alwaysOutputData": true,
+      "credentials": {
+        "smtp": {
+          "id": "U94QDAIhlieUd6RD",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"email_sent\": true,\n  \"reminder_completed\": true,\n  \"draft_sent\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16,
+        -560
+      ],
+      "id": "48067f8c-8101-4506-8b10-b76e780620f7",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "serveos-send-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1536,
+        -384
+      ],
+      "id": "ab4a7fb3-106d-43e6-8af7-c0007909748c",
+      "name": "Send Email Webhook",
+      "webhookId": "cacf3607-5e31-4589-a266-7926bb5ad323"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body || $json;\n\nconst normalized = {\n  send_type: body.send_type || \"outreach_draft\",\n\n  recipient_email:\n    body.recipient_email ||\n    body.to_email ||\n    \"\",\n\n  subject: body.subject || \"\",\n  body: body.body || \"\",\n\n  client_id: body.client_id || null,\n  client_name: body.client_name || \"\",\n\n  user_id: body.user_id || null,\n\n  reminder_id: body.reminder_id || null,\n  draft_id: body.draft_id || null\n};\n\nif (!normalized.recipient_email) {\n  throw new Error(\"Missing recipient email\");\n}\n\nif (!normalized.subject) {\n  throw new Error(\"Missing subject\");\n}\n\nif (!normalized.body) {\n  throw new Error(\"Missing email body\");\n}\n\nreturn {\n  json: normalized\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        -384
+      ],
+      "id": "fc44b915-6d73-4bdf-94c9-67673256bf47",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "acee26ed-a5e0-4900-abc0-add3df3ba000",
+              "leftValue": "={{$json.send_type}}",
+              "rightValue": "followup_reminder",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1120,
+        -384
+      ],
+      "id": "3570db66-d593-49e8-b657-821dcc585ada",
+      "name": "Check Send Type"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://your-supabase-project.supabase.co/rest/v1/reminders?id=eq.{{$json.reminder_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"completed\",\n  \"completed_at\": \"{{ $now }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -416,
+        -560
+      ],
+      "id": "a6ef59e5-ee3c-4482-96d9-7920b22b05f0",
+      "name": "UPDATE REMINDER STATUS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://your-supabase-project.supabase.co/rest/v1/history_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{$json.user_id}}\",\n\n  \"client_id\": \"{{$json.client_id}}\",\n\n  \"action_type\": \"followup_sent\",\n\n  \"action_label\": \"Follow-Up Email Sent\",\n\n  \"metadata\": {\n    \"send_type\": \"followup_reminder\",\n    \"draft_id\": \"{{$json.draft_id}}\",\n    \"recipient_email\": \"{{$json.recipient_email}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -224,
+        -560
+      ],
+      "id": "865a1ee7-ec4c-4244-8fd6-a2e8a37010a9",
+      "name": "STORE HISTORY"
+    },
+    {
+      "parameters": {
+        "fromEmail": "sender@example.com",
+        "toEmail": "recipient@example.com",
+        "subject": "={{$json.subject}}",
+        "emailFormat": "text",
+        "text": "={{$json.body}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -832,
+        -256
+      ],
+      "id": "602b19ee-e4c2-41cf-8048-56cd2fdd7ab6",
+      "name": "Send Email1",
+      "webhookId": "655442b2-088f-41d9-877c-60f5dbf72acc",
+      "alwaysOutputData": true,
+      "credentials": {
+        "smtp": {
+          "id": "U94QDAIhlieUd6RD",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://your-supabase-project.supabase.co/rest/v1/history_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Update Outreach Draft').item.json.user_id }}\",\n\n  \"client_id\": \"{{ $('Update Outreach Draft').item.json.client_id }}\",\n\n  \"action_type\": \"outreach_sent\",\n\n  \"action_label\": \"Outreach Email Sent\",\n\n  \"metadata\": {\n    \"tone\": \"{{ $('Update Outreach Draft').item.json.tone }}\",\n    \"strategy\": \"{{ $('Update Outreach Draft').item.json.strategy }}\",\n    \"urgency\": \"{{ $('Update Outreach Draft').item.json.urgency }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -416,
+        -256
+      ],
+      "id": "fe035737-b641-48d2-88ad-9eca9946cf5c",
+      "name": "STORE HISTORY1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"email_sent\": true,\n  \"draft_sent\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -208,
+        -256
+      ],
+      "id": "227a3124-1966-41e0-94b9-aa2b01ff3fcf",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://your-supabase-project.supabase.co/rest/v1/outreach_drafts?id=eq.{{$json.draft_id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sent\": true,\n  \"sent_at\": \"{{ $now }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -624,
+        -560
+      ],
+      "id": "7b0e160c-53ad-46ca-a308-a714c9e433fc",
+      "name": "Update FollowUp Draft"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://your-supabase-project.supabase.co/rest/v1/outreach_drafts?id=eq.{{ $('Code in JavaScript').item.json.draft_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sent\": true,\n  \"sent_at\": \"{{ $now }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -624,
+        -256
+      ],
+      "id": "fd166498-2ce0-4ef5-879d-7773fb2e8377",
+      "name": "Update Outreach Draft"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Update FollowUp Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Check Send Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Send Type": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UPDATE REMINDER STATUS": {
+      "main": [
+        [
+          {
+            "node": "STORE HISTORY",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STORE HISTORY": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email1": {
+      "main": [
+        [
+          {
+            "node": "Update Outreach Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STORE HISTORY1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update FollowUp Draft": {
+      "main": [
+        [
+          {
+            "node": "UPDATE REMINDER STATUS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Outreach Draft": {
+      "main": [
+        [
+          {
+            "node": "STORE HISTORY1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4e206a2a-233a-4259-985f-5fabfbbd8c58",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7d0cbc15a47f244afbffd73f91499479517936b6aabe6646cc02775a09da8151"
+  },
+  "id": "3V4S4GEQTcCsmZ07",
+  "tags": []
+}

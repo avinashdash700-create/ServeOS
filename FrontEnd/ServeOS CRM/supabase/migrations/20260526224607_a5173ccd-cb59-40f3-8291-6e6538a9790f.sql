@@ -1,0 +1,2 @@
+ALTER TABLE public.outreach_drafts ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP WITH TIME ZONE;
+CREATE INDEX IF NOT EXISTS idx_outreach_drafts_archived ON public.outreach_drafts(user_id, archived, archived_at DESC);

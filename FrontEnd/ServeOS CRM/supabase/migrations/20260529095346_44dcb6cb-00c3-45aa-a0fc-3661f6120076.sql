@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS follow_up_interval text NOT NULL DEFAULT '5_minutes';

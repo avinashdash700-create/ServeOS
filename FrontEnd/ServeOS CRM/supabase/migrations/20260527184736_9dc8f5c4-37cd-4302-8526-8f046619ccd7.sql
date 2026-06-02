@@ -1,0 +1,1 @@
+ALTER TABLE public.outreach_drafts ADD COLUMN IF NOT EXISTS action_label text;

@@ -1,0 +1,274 @@
+{
+  "name": "ServeOS - Outreach AI Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "serveos-outreach",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -768,
+        -224
+      ],
+      "id": "46b50524-69d8-4232-8706-213902bbfbc9",
+      "name": "Outreach Webhook",
+      "webhookId": "75dccd6d-67c6-4a82-914f-880c0a4fc2f4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body;\n\nlet strategy = \"\";\nlet tone = \"\";\nlet urgency = \"\";\nlet cta = \"\";\nlet actionType = \"\";\n\nconst status = (body.intent || \"\").toLowerCase();\n\nif (status.includes(\"cold\")) {\n  strategy = \"Rebuild relationship naturally\";\n  tone = \"friendly\";\n  urgency = \"low\";\n  cta = \"Start light conversation\";\n  actionType = \"re-engage\";\n}\n\nelse if (status.includes(\"follow\")) {\n  strategy = \"Encourage next response\";\n  tone = \"professional\";\n  urgency = \"medium\";\n  cta = \"Push conversation forward\";\n  actionType = \"send-follow-up\";\n}\n\nelse {\n  strategy = \"Maintain active relationship\";\n  tone = \"casual\";\n  urgency = \"low\";\n  cta = \"Keep engagement active\";\n  actionType = \"check-in\";\n}\n\nif (body.mode === \"same_tone\" && body.previous_tone) {\n    tone = body.previous_tone;\n}\nelse if (body.tone_override) {\n    tone = body.tone_override;\n}\n\nreturn [{\n  json: {\n    client_id: body.client_id,\n    user_id: body.user_id,\n\n    client_name: body.client_name,\n    notes: body.notes,\n    tags: body.tags,\n    last_contacted: body.last_contacted,\n    relationship_status: body.intent,\n    days_since_contact: body.days_since_contact || 0,\n\n    outreach_strategy: strategy,\n    outreach_tone: tone,\n    outreach_cta: cta,\n    outreach_urgency: urgency,\n    action_type: actionType\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -224
+      ],
+      "id": "bac3a756-3902-4dbf-a6f1-c7571def7065",
+      "name": "Relationship Intelligence Layer"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a personalized outreach email.\n\nCLIENT DETAILS:\n\nName: {{ $json.client_name }}\nStatus: {{ $json.relationship_status }}\nTags: {{ $json.tags[0] }}\nNotes: {{ $json.notes }}\nLast Contacted: {{ $json.last_contacted }}\nDays Since Contact: {{$json.days_since_contact}}\n\nOUTREACH STRATEGY:\n\nStrategy: {{$json.outreach_strategy}}\nTone: {{$json.outreach_tone}}\nCTA Goal: {{$json.outreach_cta}}\nUrgency: {{$json.outreach_urgency}}\n\nACTION TYPE:\n{{$json.action_type}}\n\nWrite a personalized outreach email.",
+        "options": {
+          "systemMessage": "=You are an elite relationship-focused outreach writer operating inside an AI-powered CRM for modern solo professionals, consultants, founders, agencies, and service businesses.\n\nYour job is to generate outreach emails that feel:\n- deeply human\n- naturally conversational\n- emotionally intelligent\n- context aware\n- lightweight\n- believable\n- impossible to identify as AI-generated\n\nThe writing should feel like a real person quickly typing a thoughtful message — not an AI carefully manufacturing copy.\n\n--------------------------------------------------\nCORE OBJECTIVE\n--------------------------------------------------\n\nGenerate highly personalized outreach emails that:\n- strengthen relationships\n- restart conversations naturally\n- create momentum\n- encourage replies\n- feel authentic and trust-based\n\nThe emails should never feel:\n- templated\n- sales-automated\n- CRM-generated\n- over-optimized\n- LinkedIn-style AI writing\n\n--------------------------------------------------\nVERY IMPORTANT CONTEXT RULES\n--------------------------------------------------\n\nThe CRM notes are INTERNAL CONTEXT ONLY.\n\nNEVER say:\n- \"Based on our notes\"\n- \"According to your profile\"\n- \"As per our CRM\"\n- \"Our records show\"\n- \"I noticed from your information\"\n- or any robotic/meta phrasing.\n\nThe client should NEVER feel:\n- analyzed\n- profiled\n- tracked\n- processed by AI\n- CRM-managed\n\nUse the notes only as inspiration for:\n- relevance\n- continuity\n- timing\n- relationship context\n- conversational intelligence\n\nDO NOT summarize notes back to the client.\n\nDO NOT expose raw CRM details directly.\n\nInstead:\n- subtly infer details\n- naturally reference prior context\n- sound like a human remembering conversations organically\n\n--------------------------------------------------\nCLIENT DETAILS\n--------------------------------------------------\n\nClient Name:\n{{ $json.client_name }}\n\nBusiness Notes:\n{{ $json.notes }}\n\nTags:\n{{ $json.tags }}\n\nRelationship Status:\n{{ $json.relationship_status }}\n\nAction Type:\n{{ $json.action_type }}\n\nDesired Tone:\n{{ $json.outreach_tone }}\n\nUrgency:\n{{ $json.outreach_urgency }}\n\nStrategy:\n{{ $json.outreach_strategy }}\n\n--------------------------------------------------\nWRITING RULES\n--------------------------------------------------\n\n1. Every email must feel freshly written.\n\n2. NEVER reuse the same structure repeatedly.\n\n3. Avoid repetitive openings like:\n- \"Just checking in\"\n- \"Circling back\"\n- \"Following up\"\n- \"Hope you're doing well\"\n- \"Based on our notes\"\n\n4. The writing should feel naturally improvised.\n\n5. Avoid sounding overly polished.\n\n6. Write like a busy human professional.\n\n7. Some emails may:\n- start mid-thought\n- feel lightweight\n- feel conversational\n- use fragments naturally\n- feel casually typed\n- avoid perfect structure\n\n8. Keep paragraphs short.\n\n9. Avoid excessive explanations.\n\n10. Never narrate the relationship artificially.\n\nBAD:\n\"I've been thinking about our previous discussion regarding...\"\n\nGOOD:\n\"The way you've been evolving the dining experience lately has been impressive.\"\n\n11. Mention context subtly and conversationally.\n\n12. NEVER dump CRM information directly into the email.\n\n13. The client context should influence the message — not dominate it.\n\n14. The email should sound emotionally natural.\n\n15. Avoid artificial enthusiasm.\n\n16. Avoid motivational LinkedIn language.\n\n17. Avoid startup-twitter style writing.\n\n18. Avoid sounding like a copywriter.\n\n19. Avoid generic AI phrasing.\n\n20. Regeneration MUST substantially rewrite the email.\n\n--------------------------------------------------\nSTRUCTURAL VARIATION ENGINE\n--------------------------------------------------\n\nEach generation MUST vary:\n- sentence length\n- paragraph count\n- opener style\n- pacing\n- CTA placement\n- emotional framing\n- conversational rhythm\n- directness\n- structure\n\nPossible opener styles:\n- observation\n- curiosity\n- continuation\n- quick thought\n- industry reference\n- compliment\n- momentum\n- lightweight ask\n- conversational pickup\n\nPossible CTA styles:\n- soft ask\n- scheduling\n- collaborative idea\n- quick opinion request\n- lightweight reply\n- next-step momentum\n- idea sharing\n\nNever repeat the same email rhythm across clients.\n\n--------------------------------------------------\nTONE BEHAVIOR\n--------------------------------------------------\n\nsame tone:\n- heavily rewrite wording\n- preserve communication energy only\n\nfriendly:\n- warm\n- approachable\n- conversational\n- human\n\nprofessional:\n- polished\n- executive\n- structured\n- credible\n\ncasual:\n- lightweight\n- relaxed\n- modern\n- informal\n\nconcise:\n- brief\n- efficient\n- minimal\n- fast-moving\n\npersuasive:\n- momentum-driven\n- action-oriented\n- compelling\n- confident\n\n--------------------------------------------------\nREGENERATION RULES\n--------------------------------------------------\n\nWhen regenerating:\n- rewrite 80-90% of wording\n- alter structure significantly\n- vary emotional framing\n- vary opener\n- vary pacing\n- vary CTA\n- vary sentence flow\n\nKeep only:\n- core intent\n- relationship context\n- business objective\n\nEvery regeneration should feel like a completely new human-written draft.\n\n--------------------------------------------------\nHUMANIZATION RULES\n--------------------------------------------------\n\nThe writing should occasionally:\n- feel imperfect\n- feel lightly conversational\n- feel naturally paced\n- avoid over-formatting\n\nSome drafts can be:\n- very short\n- direct\n- curiosity-driven\n- momentum-focused\n- insight-led\n\nAvoid predictable AI rhythm.\n\nDo NOT make every email:\n- symmetrical\n- overly complete\n- too carefully written\n\n--------------------------------------------------\nOUTPUT FORMAT\n--------------------------------------------------\n\nReturn ONLY valid JSON.\n\nDo NOT wrap in markdown.\nDo NOT use ```json.\nDo NOT explain anything.\n\nReturn EXACTLY in this format:\n\n{\n  \"subject\": \"string\",\n  \"body\": \"string\",\n  \"cta\": \"string\",\n  \"reasoning\": \"string\",\n  \"confidence_score\": number\n}\n\n--------------------------------------------------\nCONFIDENCE SCORE RULES\n--------------------------------------------------\n\n50-65:\nweak personalization\n\n66-80:\ngood context alignment\n\n81-90:\nstrong relationship relevance\n\n91-98:\nexcellent personalization and continuity\n\nConfidence MUST vary dynamically.\n\nNever return static scores.\n\n--------------------------------------------------\nFINAL OUTPUT REQUIREMENTS\n--------------------------------------------------\n\nThe email must:\n- feel genuinely human\n- feel personalized without sounding analyzed\n- sound relationship-first\n- avoid robotic phrasing\n- avoid template feel\n- avoid repetitive rhythm\n- avoid sounding AI-generated\n\nThe recipient should feel:\n\"this person actually remembered me.\"\n\nNOT:\n\"this was generated from CRM software.\"\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -352,
+        -224
+      ],
+      "id": "03dccc3e-1589-419b-83f2-0a4fdc236933",
+      "name": "Generate Outreach Draft"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        -16
+      ],
+      "id": "9601a71a-8d8f-41ff-aab4-ae43106cb179",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GOOGLE_PALM_API_ID_PLACEHOLDER",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw =\n  $json.output ||\n  $json.text ||\n  $json.response ||\n  \"\";\n\nlet cleaned = raw\n  .replace(/```json/g, \"\")\n  .replace(/```/g, \"\")\n  .trim();\n\nlet parsed;\n\ntry {\n\n  parsed = JSON.parse(cleaned);\n\n  if (typeof parsed === \"string\") {\n    parsed = JSON.parse(parsed);\n  }\n\n} catch (err) {\n  throw new Error(\"Failed to parse AI JSON response\");\n}\n\nreturn {\n  json: {\n    subject: parsed.subject || \"\",\n    body: parsed.body || \"\",\n    cta: parsed.cta || \"\",\n    reasoning: parsed.reasoning || \"\",\n    confidence_score: parsed.confidence_score || 0\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -224
+      ],
+      "id": "87abdb1c-76b7-4ac0-949f-4da1e23f822c",
+      "name": "Clean Draft",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-supabase-project.supabase.co/rest/v1/outreach_drafts?on_conflict=user_id,client_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates, return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Relationship Intelligence Layer').item.json.user_id }}\",\n\n  \"client_id\": \"{{ $('Relationship Intelligence Layer').item.json.client_id }}\",\n\n  \"subject\": \"{{ $json.subject }}\",\n\n  \"tone\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_tone }}\",\n\n  \"body\": {{ JSON.stringify($json.body || \"\") }},\n\n  \"cta\": \"{{ $json.cta }}\",\n\n  \"confidence\": {{ $json.confidence_score }},\n\n  \"strategy\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_strategy || '' }}\",\n\n  \"urgency\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_urgency || '' }}\",\n\n  \"reasoning\": \"{{ $json.reasoning }}\",\n\n  \"sent\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        -224
+      ],
+      "id": "56f17d84-bd52-44f9-98b1-71e564603d85",
+      "name": "Store Outreach Draft"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-supabase-project.supabase.co/rest/v1/history_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{$json.user_id}}\",\n  \"client_id\": \"{{$json.client_id}}\",\n  \"action_type\": \"outreach_generated\",\n  \"action_label\": \"{{ $('Relationship Intelligence Layer').item.json.action_type + ' draft generated' }}\",\n  \"metadata\": {\n    \"tone\": \"{{ $json.tone }}\",\n    \"strategy\": \"{{ $json.strategy }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        -224
+      ],
+      "id": "109ae605-53a0-47e6-8e89-3ca56620d00d",
+      "name": "Store History Log"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"client_id\": \"{{ $json.client_id }}\",\n  \"draft\": {{ JSON.stringify($('Clean Draft').item.json) }},\n  \"tone\": \"{{ $json.metadata.tone }}\",\n  \"strategy\": \"{{ $json.metadata.strategy }}\",\n  \"confidence_score\": {{ $('Store Outreach Draft').item.json.confidence }}\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        624,
+        -224
+      ],
+      "id": "100724fc-18a9-47da-b474-3f32f28cff83",
+      "name": "Return AI Draft"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Outreach Webhook": {
+      "main": [
+        [
+          {
+            "node": "Relationship Intelligence Layer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relationship Intelligence Layer": {
+      "main": [
+        [
+          {
+            "node": "Generate Outreach Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Outreach Draft",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Outreach Draft": {
+      "main": [
+        [
+          {
+            "node": "Clean Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Draft": {
+      "main": [
+        [
+          {
+            "node": "Store Outreach Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Outreach Draft": {
+      "main": [
+        [
+          {
+            "node": "Store History Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store History Log": {
+      "main": [
+        [
+          {
+            "node": "Return AI Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5eb61c18-cb22-4193-a618-9ef5da4d4895",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7d0cbc15a47f244afbffd73f91499479517936b6aabe6646cc02775a09da8151"
+  },
+  "id": "D13pvjGaKnc5Hdnh",
+  "tags": []
+}

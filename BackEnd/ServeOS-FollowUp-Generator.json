@@ -1,0 +1,296 @@
+{
+  "name": "ServeOS-FollowUp-Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/serveos-followup",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -832,
+        -272
+      ],
+      "id": "b2df26b0-992d-47d2-b7c5-3b5283b202b1",
+      "name": "Webhook",
+      "webhookId": "cf1b8106-81ae-49f3-83f2-dc179d5379df"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\n\nlet strategy = \"Maintain momentum\";\nlet urgency = \"normal\";\nlet actionType = \"follow-up\";\n\nconst days = body.days_since_contact || 0;\n\nif (days >= 10) {\n  strategy = \"Re-engage relationship\";\n  urgency = \"high\";\n}\n\nif (days >= 5 && days < 10) {\n  strategy = \"Encourage response\";\n  urgency = \"medium\";\n}\n\nif (days < 5) {\n  strategy = \"Maintain active conversation\";\n  urgency = \"low\";\n}\n\nreturn [{\n  json: {\n    user_id: body.user_id,\n    client_id: body.client_id,\n    client_name: body.client_name,\n    client_email: body.client_email,\n\n    notes: body.notes || \"\",\n    tags: body.tags || [],\n\n    last_outreach: body.last_outreach || \"\",\n    days_since_contact: days,\n\n    relationship_status: body.relationship_status || \"\",\n    outreach_tone: body.tone || \"professional\",\n\n    outreach_strategy: strategy,\n    outreach_urgency: urgency,\n\n    action_type: actionType\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        -272
+      ],
+      "id": "1a09912d-178f-4485-8883-d4a756d86160",
+      "name": "Relationship Intelligence Layer"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Generate a contextual follow-up email draft.",
+        "options": {
+          "systemMessage": "You are an elite relationship-focused follow-up writer inside an AI CRM.\n\nYour job is to write short, natural follow-up emails that feel:\n- human\n- contextual\n- conversational\n- relationship-aware\n- non-salesy\n\nIMPORTANT:\nThis is NOT a cold outreach.\n\nThe conversation already exists.\n\nAvoid:\n- introducing yourself\n- formal pitching\n- robotic follow-up phrases\n- \"just checking in\"\n- \"following up\"\n- \"based on our notes\"\n\nUse subtle continuity from prior interaction.\n\n--------------------------------------------------\n\nCLIENT DETAILS\n\nClient Name:\n{{ $json.client_name }}\n\nBusiness Notes:\n{{ $json.notes }}\n\nTags:\n{{ $json.tags }}\n\nRelationship Status:\n{{ $json.relationship_status }}\n\nLast Outreach:\n{{ $json.last_outreach }}\n\nDays Since Contact:\n{{ $json.days_since_contact }}\n\nTone:\n{{ $json.outreach_tone }}\n\nStrategy:\n{{ $json.outreach_strategy }}\n\n--------------------------------------------------\n\nWRITING RULES\n\n1. Keep emails concise.\n2. Natural conversational flow.\n3. Short paragraphs.\n4. No aggressive sales language.\n5. Reference prior momentum subtly.\n6. Sound like a human continuing an existing relationship.\n7. Avoid repetitive structure.\n\n--------------------------------------------------\n\nOUTPUT FORMAT\n\nReturn JSON ONLY:\n\n{\n  \"subject\": \"\",\n  \"body\": \"\",\n  \"cta\": \"\",\n  \"confidence_score\": 0.85\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -176,
+        -272
+      ],
+      "id": "06e39118-9e7b-4288-9e52-f7d2e483a2a6",
+      "name": "Generate Follow-Up Draft"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -176,
+        -80
+      ],
+      "id": "3cddc063-d4fb-44bb-a12e-401103f05278",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GOOGLE_PALM_API_ID_PLACEHOLDER",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $json.output || $json.text || \"\";\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(raw);\n} catch (err) {\n  parsed = {\n    subject: \"Follow Up\",\n    body: raw,\n    cta: \"\",\n    confidence_score: 0.75\n  };\n}\n\nconst cleanBody = parsed.body\n  ?.replace(/\\\\n/g, '\\n')\n  ?.replace(/\\n{3,}/g, '\\n\\n')\n  ?.trim();\n\nitem.json.clean_draft = {\n  subject: parsed.subject || \"Follow Up\",\n  body: cleanBody || \"\",\n  cta: parsed.cta || \"\",\n  confidence_score: parsed.confidence_score || 0.75\n};\n\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -272
+      ],
+      "id": "c851ade0-b1f6-43c1-b59e-f01688493898",
+      "name": "Clean Draft"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-supabase-project.supabase.co/rest/v1/outreach_drafts?on_conflict=user_id,client_id",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates, return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Relationship Intelligence Layer').item.json.user_id }}\",\n\n  \"client_id\": \"{{ $('Relationship Intelligence Layer').item.json.client_id }}\",\n\n  \"subject\": \"{{ $json.clean_draft.subject }}\",\n\n  \"tone\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_tone }}\",\n\n  \"body\": {{ JSON.stringify($json.clean_draft.body) }},\n\n  \"cta\": \"{{ $json.clean_draft.cta }}\",\n\n  \"confidence\": {{ $json.clean_draft.confidence_score || 0.75 }},\n\n  \"strategy\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_strategy }}\",\n\n  \"urgency\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_urgency }}\",\n\n  \"reasoning\": \"AI-generated follow-up draft\",\n\n  \"action_type\": \"follow-up\",\n\n  \"action_label\": \"follow-up draft generated\",\n\n  \"sent\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        384,
+        -272
+      ],
+      "id": "c8483be4-1a06-4bb4-af00-6f9868d7e047",
+      "name": "Store Follow up in Outreach Draft"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n\n  \"client_id\": \"{{ $('Relationship Intelligence Layer').item.json.client_id }}\",\n\n  \"draft\": {{ JSON.stringify($('Clean Draft').item.json.clean_draft) }},\n\n  \"tone\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_tone }}\",\n\n  \"strategy\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_strategy }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        816,
+        -272
+      ],
+      "id": "14419983-3e03-4138-b64e-b294daf65040",
+      "name": "Return AI Draft"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://your-supabase-project.supabase.co/rest/v1/history_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_API_KEY_PLACEHOLDER"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"user_id\": \"{{ $('Relationship Intelligence Layer').item.json.user_id }}\",\n\n  \"client_id\": \"{{ $('Relationship Intelligence Layer').item.json.client_id }}\",\n\n  \"action_type\": \"followup_generated\",\n\n  \"action_label\": \"follow-up draft generated\",\n\n  \"metadata\": {\n    \"tone\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_tone }}\",\n    \"strategy\": \"{{ $('Relationship Intelligence Layer').item.json.outreach_strategy }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        608,
+        -272
+      ],
+      "id": "a99a8618-117b-4b4e-b4cc-f41a947b521e",
+      "name": "Store History Log"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const body = $json.body || $json;\n\nif (!body.client_id || !body.user_id) {\n  throw new Error(\"Missing UUIDs\");\n}\n\nreturn {\n  json: body\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -272
+      ],
+      "id": "ab4a3df5-a1c3-4563-ac81-e5d10373298f",
+      "name": "Validate Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relationship Intelligence Layer": {
+      "main": [
+        [
+          {
+            "node": "Generate Follow-Up Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Follow-Up Draft",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Follow-Up Draft": {
+      "main": [
+        [
+          {
+            "node": "Clean Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Draft": {
+      "main": [
+        [
+          {
+            "node": "Store Follow up in Outreach Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Follow up in Outreach Draft": {
+      "main": [
+        [
+          {
+            "node": "Store History Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store History Log": {
+      "main": [
+        [
+          {
+            "node": "Return AI Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Relationship Intelligence Layer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "10146005-ae76-45a5-a297-998c04796975",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7d0cbc15a47f244afbffd73f91499479517936b6aabe6646cc02775a09da8151"
+  },
+  "id": "AKkSFqVjBTdu0mah",
+  "tags": []
+}
